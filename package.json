@@ -8,5 +8,9 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@types/minimalistic-assert": "^1.0.3",
+    "minimalistic-assert": "^1.0.1"
+  }
 }
