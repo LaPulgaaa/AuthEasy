@@ -14,7 +14,6 @@ export class OAuthClient{
     private response_type: string;
     private client_id: string;
     private client_secret: string;
-    private state: string;
     private redirect_uri: string;
     private connection: string;
     //Auth0 has introduced a new field "organisation" ie. ID of the organisation
@@ -52,12 +51,16 @@ export class OAuthClient{
 
     public async start_auth_flow(){
 
+        const state = this.config_store.get("state");
+        if(state === undefined)
+            throw new Error("state parameter is undefined.");
+
         const code_challenge = await this.create_code_challenge();
 
         const params_obj = {
             response_type: this.response_type,
             client_id: this.client_id,
-            state: this.state,
+            state: state,
             redirect_uri: this.redirect_uri,
             code_challenge_method: "S256",
             code_challenge: code_challenge,
