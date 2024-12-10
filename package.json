@@ -1,8 +1,8 @@
 {
-  "name": "auth_easy",
+  "name": "@lapulga_28/auth_easy",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A simple JS client library for OAuth2.0",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
