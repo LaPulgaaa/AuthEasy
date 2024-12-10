@@ -1,7 +1,20 @@
+export type OAuthClientConfigParams = {
+    authorization_url: string,
+    client_id: string,
+    client_secret: string,
+    redirect_uri: string,
+    connection: string,
+    audience?: string;
+    scope?: string,
+    response_type?: string,
+    organisation?: string,
+    token_url: string,
+}
+
 export type TokenParams = {
     access_token: string,
     refresh_token: string,
-    expires_at: number,
+    expires_in: number,
     token_id: string,
     token_type: string
 }
@@ -24,16 +37,6 @@ export type RefreshTokenResponseBody = {
     scope: string,
     token_id: string,
     token_type: string,
-}
-
-export type OAuthClientConfigParams = {
-    client_id: string,
-    client_secret: string,
-    redirect_uri: string,
-    connection: string,
-    scope?: string,
-    response_type?: string,
-    organisation?: string,
 }
 
 export type CallbackParams = {

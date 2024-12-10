@@ -50,12 +50,9 @@ export class OAuthClient{
         return OAuthClient.instance;
     }
 
-    public start_auth_flow(): string {
+    public async start_auth_flow(){
 
-        const code_challenge = this.config_store.get("code_challenge");
-
-        if(code_challenge === undefined)
-            throw new Error("Code challenge undefined");
+        const code_challenge = await this.create_code_challenge();
 
         const params_obj = {
             response_type: this.response_type,
@@ -88,10 +85,11 @@ export class OAuthClient{
         if(original_state === undefined)
             throw new Error("State param not available");
 
-        // check whether the "state" returned from the auth server matches the original "state"
+        // check whether the "state" returned from the auth server 
+        // matches the original "state"
         const decoded_state = url_safe_decode64(callback_params.state);
         if(decoded_state !== original_state)
-            throw new Error("State param returned from the service does not match original state. Potential CSRF attack.")
+            throw new Error("State param returned from the auth server does not match original state. Potential CSRF attack!!")
 
         const code_verifier = this.config_store.get("code_verifier");
         if(code_verifier === undefined)
@@ -122,7 +120,8 @@ export class OAuthClient{
             if(resp.ok){
                 const body:CallbackResponse = await resp.json();
 
-                // initialise TokenManager singleton instance with token params returned from auth server.
+                // initialise TokenManager singleton instance with token params 
+                // returned from auth server.
                 TokenManager.get_instance().set_token_params(body);
 
                 return body;
@@ -133,7 +132,12 @@ export class OAuthClient{
     }
 
     public async refresh_token(){
-        const token_resp = await TokenManager.get_instance().handle_refresh_token(this.client_id,this.client_secret);
+        const token_resp = await TokenManager.get_instance().handle_refresh_token({
+            client_id: this.client_id,
+            client_secret: this.client_secret,
+            token_url: this.token_url,
+            scope: this.scope,
+        });
 
         if(token_resp === undefined)
             throw new Error("Could not fetch new access token");
@@ -142,7 +146,9 @@ export class OAuthClient{
     }
 
     private generate_state(){
-        //TODO: generate random csrf protection state param using external library
+        // generate a cryptographically secure random string. We can also store specific
+        // details in 'state' variable and sign it. For now, we use this only detection 
+        // potential CSRF attacks.
         const random_state = generate_random_str()
 
         this.config_store.set("state",random_state);
@@ -161,7 +167,7 @@ export class OAuthClient{
         return encoded_code_verifier;
     }
 
-    async create_code_challenge(){
+    private async create_code_challenge(){
         // create a code challenge using "code_verifier"
         const code_verifier = this.generate_code_verifier();
 
