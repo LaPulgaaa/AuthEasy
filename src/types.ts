@@ -14,6 +14,10 @@ export type RefreshTokenRequestBody = {
     scope?: string,
 }
 
+export type RefreshTokenArgs = (Omit<RefreshTokenRequestBody,"grant_type"|"refresh_token">)& {
+    token_url: string,
+}
+
 export type RefreshTokenResponseBody = {
     access_token: string,
     expires_in: number,

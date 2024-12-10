@@ -1,38 +1,43 @@
 import { generate_random_str, sha256_hash, url_safe_decode64, url_safe_encode64 } from "./util";
 import { TokenManager } from "./token_manager";
-import { BASE_URL } from "./const";
 import type { OAuthClientConfigParams,CallbackRequestParams, CallbackResponse, CallbackParams } from "./types";
 
 
 export class OAuthClient{
     private static instance:OAuthClient;
 
-    private static oauth_server_url = BASE_URL;
+    private authorization_url: string;
+    private token_url: string;
 
     private scope?: string;
+    private audience?:string;
     private response_type: string;
     private client_id: string;
     private client_secret: string;
     private state: string;
     private redirect_uri: string;
     private connection: string;
-    //Auth0 has introduced a new field "organisation" ie. ID of the organisation to use when authentication the user. 
+    //Auth0 has introduced a new field "organisation" ie. ID of the organisation
+    // to use when authentication the user. 
     private organisation?: string;
 
     private config_store: Map<string,string> = new Map();
 
     private constructor(config: OAuthClientConfigParams){
-        // We are implementing PKCE authorization flow. Hence "code" response_type field tells the 
-        // authorization server to redirect with authorization_code.
-        this.response_type = "code";
-        this.state = this.generate_state();
+        this.authorization_url = config.authorization_url;
+        this.token_url = config.token_url;
+        // We are implementing PKCE authorization flow. Hence "code" response_type 
+        // field tells the authorization server to redirect with authorization_code.
+        this.response_type = config.connection ?? "code";
         this.client_id = config.client_id;
         this.client_secret = config.client_secret;
         this.redirect_uri = config.redirect_uri;
         this.scope = config.scope;
         this.connection = config.connection;
         this.organisation = config.organisation;
-        this.response_type = config.connection ?? "code";
+        this.audience = config.audience;
+        //generate state param
+        this.generate_state();
     }
 
     static get_instance(config?: OAuthClientConfigParams){
@@ -65,12 +70,16 @@ export class OAuthClient{
 
         const auth_url_search_params = new URLSearchParams(params_obj);
 
+        // these are optional fields. Auth server assumes default values when 
+        // these are not passed.
+        if(this.audience !== undefined)
+            auth_url_search_params.set("audience",this.audience);
         if(this.organisation !== undefined)
             auth_url_search_params.set("organisation",this.organisation);
         if(this.scope !== undefined)
             auth_url_search_params.set("scope",this.scope);
 
-        return `${OAuthClient.oauth_server_url}/authorize?${auth_url_search_params.toString()}`
+        return `${this.authorization_url}?${auth_url_search_params.toString()}`
     }
 
     public async handle_callback(callback_params:CallbackParams){
@@ -102,7 +111,7 @@ export class OAuthClient{
         });
 
         try{
-            const resp = await fetch(`${OAuthClient.oauth_server_url}/oauth/token`,{
+            const resp = await fetch(`${this.token_url}`,{
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"

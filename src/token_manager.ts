@@ -58,14 +58,14 @@ export class TokenManager{
             request_form.set(key,value);
         });
 
-        if(client_secret !== undefined)
-            request_form.set("client_secret",client_secret);
+        if(config.client_secret !== undefined)
+            request_form.set("client_secret",config.client_secret);
 
-        if(scope !== undefined)
-            request_form.set("scope",scope);
+        if(config.scope !== undefined)
+            request_form.set("scope",config.scope);
 
         try{
-            const resp = await fetch(`${BASE_URL}/oauth/token`,{
+            const resp = await fetch(`${config.token_url}`,{
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
