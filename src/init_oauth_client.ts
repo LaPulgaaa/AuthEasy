@@ -1,23 +1,15 @@
-import assert from "minimalistic-assert";
-import sha256 from "crypto-js/sha256";
-import Base64 from "crypto-js/enc-base64";
+import { generate_random_str, sha256_hash, url_safe_decode64, url_safe_encode64 } from "./util";
+import { TokenManager } from "./token_manager";
+import { BASE_URL } from "./const";
+import type { OAuthClientConfigParams,CallbackRequestParams, CallbackResponse, CallbackParams } from "./types";
 
-type OAuthClientConfigParams = {
-    client_id: string,
-    client_secret: string,
-    redirect_uri: string,
-    connection: string,
-    scope: string,
-    response_type?: string,
-    organisation?: string,
-}
 
 export class OAuthClient{
     private static instance:OAuthClient;
 
-    private static oauth_server_url = "https://dev-8y1fpu7abt6p5vkk.au.auth0.com";
+    private static oauth_server_url = BASE_URL;
 
-    private scope: string;
+    private scope?: string;
     private response_type: string;
     private client_id: string;
     private client_secret: string;
@@ -27,9 +19,11 @@ export class OAuthClient{
     //Auth0 has introduced a new field "organisation" ie. ID of the organisation to use when authentication the user. 
     private organisation?: string;
 
-    private config_store: Map<string,unknown> = new Map();
+    private config_store: Map<string,string> = new Map();
 
     private constructor(config: OAuthClientConfigParams){
+        // We are implementing PKCE authorization flow. Hence "code" response_type field tells the 
+        // authorization server to redirect with authorization_code.
         this.response_type = "code";
         this.state = this.generate_state();
         this.client_id = config.client_id;
@@ -41,9 +35,10 @@ export class OAuthClient{
         this.response_type = config.connection ?? "code";
     }
 
-    public get_instance(config?: OAuthClientConfigParams){
+    static get_instance(config?: OAuthClientConfigParams){
         if(OAuthClient.instance === undefined){
-            assert(config !== undefined)
+            if(config === undefined)
+                throw new Error("OAuth client config parameters not available");
             OAuthClient.instance = new OAuthClient(config);
         }
 
@@ -52,10 +47,12 @@ export class OAuthClient{
 
     public start_auth_flow(): string {
 
-        const code_challenge = this.create_code_challenge();
+        const code_challenge = this.config_store.get("code_challenge");
+
+        if(code_challenge === undefined)
+            throw new Error("Code challenge undefined");
 
         const params_obj = {
-            scope: this.scope,
             response_type: this.response_type,
             client_id: this.client_id,
             state: this.state,
@@ -70,35 +67,97 @@ export class OAuthClient{
 
         if(this.organisation !== undefined)
             auth_url_search_params.set("organisation",this.organisation);
+        if(this.scope !== undefined)
+            auth_url_search_params.set("scope",this.scope);
 
         return `${OAuthClient.oauth_server_url}/authorize?${auth_url_search_params.toString()}`
     }
 
+    public async handle_callback(callback_params:CallbackParams){
+
+        const original_state = this.config_store.get(callback_params.state);
+        if(original_state === undefined)
+            throw new Error("State param not available");
+
+        // check whether the "state" returned from the auth server matches the original "state"
+        const decoded_state = url_safe_decode64(callback_params.state);
+        if(decoded_state !== original_state)
+            throw new Error("State param returned from the service does not match original state. Potential CSRF attack.")
+
+        const code_verifier = this.config_store.get("code_verifier");
+        if(code_verifier === undefined)
+            throw new Error("code verifier is undefined");
+
+        const callback_req_params:CallbackRequestParams = {
+            grant_type: "authorization_code" as const,
+            client_id: this.client_id,
+            code_verifier: code_verifier,
+            code: callback_params.authorization_code,
+            redirect_uri: this.redirect_uri,
+        }
+
+        const request_form = new FormData();
+        Object.entries(callback_req_params).forEach(([key,values]) => {
+            request_form.set(key,values);
+        });
+
+        try{
+            const resp = await fetch(`${OAuthClient.oauth_server_url}/oauth/token`,{
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: request_form,
+            });
+
+            if(resp.ok){
+                const body:CallbackResponse = await resp.json();
+
+                // initialise TokenManager singleton instance with token params returned from auth server.
+                TokenManager.get_instance().set_token_params(body);
+
+                return body;
+            }
+        }catch(err){
+            console.log(err);
+        }
+    }
+
+    public async refresh_token(){
+        const token_resp = await TokenManager.get_instance().handle_refresh_token(this.client_id,this.client_secret);
+
+        if(token_resp === undefined)
+            throw new Error("Could not fetch new access token");
+
+        return token_resp;
+    }
+
     private generate_state(){
         //TODO: generate random csrf protection state param using external library
-        const random_state = "randomstrtobereplaced";
+        const random_state = generate_random_str()
 
         this.config_store.set("state",random_state);
 
-        return random_state;
+        const encoded_state = url_safe_encode64(random_state);
+        return encoded_state;
     }
 
     private generate_code_verifier(){
         // generate code verifier string
-        const random_verifier_str = sha256("randomstrtobereplaced");
-        const encoded_code_verifier = Base64.stringify(random_verifier_str);
+        const random_verifier_str = generate_random_str();
+        const encoded_code_verifier = url_safe_encode64(random_verifier_str);
 
         this.config_store.set("code_verifier",encoded_code_verifier);
         
         return encoded_code_verifier;
     }
 
-    private create_code_challenge(){
-        // create a code challenge using generate code verifier
+    async create_code_challenge(){
+        // create a code challenge using "code_verifier"
         const code_verifier = this.generate_code_verifier();
 
-        const hashed_code_verifier = sha256(code_verifier);
-        const code_challenge_str = Base64.stringify(hashed_code_verifier);
+        const hashed_code_verifier = await sha256_hash(code_verifier);
+        const code_challenge_str = url_safe_encode64(hashed_code_verifier);
         this.config_store.set("code_challenge",code_challenge_str);
         
         return code_challenge_str;
