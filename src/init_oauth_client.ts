@@ -107,7 +107,7 @@ export class OAuthClient{
 
             if(resp.ok){
                 const body:CallbackResponse = await resp.json();
-
+                console.log("Access token recieved successfully");
                 // initialise TokenManager singleton instance with token params 
                 // returned from auth server.
                 TokenManager.get_instance().set_token_params(body);

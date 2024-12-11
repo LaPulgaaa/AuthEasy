@@ -10,7 +10,6 @@ export function url_safe_encode64(url_unsafe_str: string){
         .replace(/=+$/, ''); // Remove ending '='
         return encoded_str;
     }catch(err){
-        console.log(err);
         return url_unsafe_str;
     }
 }
@@ -35,7 +34,6 @@ export function url_safe_decode64(encoded_str: string){
 
         return new TextDecoder().decode(buffer);
     }catch(err){
-        console.log(err);
         return encoded_str;
     }
 
@@ -65,7 +63,6 @@ export function store_data_in_session(data:Record<string,string>){
             })
         }
     }catch(err){
-        console.log(err);
         return;
     }
 }
@@ -76,7 +73,6 @@ export function get_session_data(key: string){
             return sessionStorage.getItem(key);
         }
     }catch(err){
-        console.log("This is not a browser enviorment.")
         return null;
     }
 }
