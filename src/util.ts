@@ -56,3 +56,27 @@ export async function sha256_hash(unhashed_str: string){
     
     return hash_hex;
 }
+
+export function store_data_in_session(data:Record<string,string>){
+    try{
+        if(typeof window !== undefined && window.sessionStorage !== undefined){
+            Object.entries(data).forEach(([key,value]) => {
+                sessionStorage.setItem(key,value);
+            })
+        }
+    }catch(err){
+        console.log(err);
+        return;
+    }
+}
+
+export function get_session_data(key: string){
+    try{
+        if(typeof window !== undefined && window.sessionStorage !== undefined){
+            return sessionStorage.getItem(key);
+        }
+    }catch(err){
+        console.log("This is not a browser enviorment.")
+        return null;
+    }
+}

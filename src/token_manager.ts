@@ -1,4 +1,5 @@
 import type { TokenParams,RefreshTokenRequestBody,RefreshTokenResponseBody, RefreshTokenArgs } from "./types";
+import { get_session_data, store_data_in_session } from "./util";
 
 export class TokenManager{
     private static instance: TokenManager;
@@ -18,24 +19,20 @@ export class TokenManager{
     }
 
     public set_token_params(token_params: TokenParams){
-        this.token_param_store.set("access_token",token_params.access_token);
-        this.token_param_store.set("refresh_token",token_params.refresh_token);
-        this.token_param_store.set("token_id",token_params.token_id);
-        this.token_param_store.set("token_type",token_params.token_type);
-
-        const expires_in = token_params.expires_in;
+        const { expires_in,...data } = token_params;
+    
         const expires_at = Date.now() + expires_in;
 
-        // We store expiry as string for consistency.
-        this.token_param_store.set("expires_at",expires_at.toString());
+        this.store_token_data({
+            ...data,
+            expires_at: expires_at.toString(),// We store expiry as string for consistency.
+        })
+
     }
 
     public async handle_refresh_token(config: RefreshTokenArgs){
 
-        const refresh_token = this.get_refresh_token();
-
-        if(refresh_token === undefined)
-            throw new Error("Refresh token not present.");
+        const refresh_token = this.always_get_param_value("refresh_token");
 
         const request_form = new FormData();
 
@@ -76,20 +73,45 @@ export class TokenManager{
         }
     }
 
-    private get_refresh_token(){
-        if(this.token_param_store.has("refresh_token")){
-            return this.token_param_store.get("refresh_token");
-        }
+    private update_token_params(data: RefreshTokenResponseBody){
+        const { expires_in, ...updated_data } = data;
 
-        return undefined;
+        const expires_at = Date.now()+expires_in;
+        this.token_param_store.set("expires_at",expires_at.toString());
+
+        this.store_token_data({
+            ...updated_data,
+            expires_at: expires_at.toString(),
+        })
     }
 
-    private update_token_params(response_body: RefreshTokenResponseBody){
-        this.token_param_store.set("access_token",response_body.access_token);
-        this.token_param_store.set("token_id",response_body.token_id);
-        this.token_param_store.set("token_type",response_body.token_type);
+    private always_get_param_value(param: string){
+        const value = this.maybe_get_param_value(param);
 
-        const expires_at = Date.now()+response_body.expires_in;
-        this.token_param_store.set("expires_at",expires_at.toString());
+        if(value === undefined)
+            throw new Error(`Value of ${param} is not present.`);
+
+        return value;
+    }
+
+    private maybe_get_param_value(param: string){
+        if(this.token_param_store.has(param))
+            return this.token_param_store.get(param)!;
+        else {
+            const backed_up_val = get_session_data(param);
+            if(backed_up_val === null)
+                return undefined;
+
+            return backed_up_val;
+        }
+    }
+
+    private store_token_data(token_params:Record<string,string>){
+
+        Object.entries(token_params).forEach(([key,value]) => {
+            this.token_param_store.set(key,value);
+        })
+
+        store_data_in_session(token_params);
     }
 }
