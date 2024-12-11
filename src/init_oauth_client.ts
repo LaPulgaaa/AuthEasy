@@ -3,7 +3,6 @@ import {
     get_session_data,
     sha256_hash,
     store_data_in_session,
-    url_safe_decode64,
     url_safe_encode64 
 } from "./util";
 import { TokenManager } from "./token_manager";
@@ -83,17 +82,10 @@ export class OAuthClient{
 
     public async handle_callback(callback_params:CallbackParams){
 
-        const original_state = this.always_get_param_value("state");
-
-        // check whether the "state" returned from the auth server 
-        // matches the original "state"
-        if(callback_params.state !== original_state)
-            throw new Error("State param returned from the auth server does not match original state. Potential CSRF attack!!")
-
-
         const callback_req_params:CallbackRequestParams = {
             grant_type: "authorization_code" as const,
             client_id: this.always_get_param_value("client_id"),
+            client_secret: this.always_get_param_value("client_secret"),
             code_verifier: this.always_get_param_value("code_verifier"),
             code: callback_params.authorization_code,
             redirect_uri: this.always_get_param_value("redirect_uri"),
