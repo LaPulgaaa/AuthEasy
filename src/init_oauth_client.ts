@@ -93,19 +93,18 @@ export class OAuthClient{
             code: callback_params.authorization_code,
             redirect_uri: this.always_get_param_value("redirect_uri"),
         }
+        const url_search_param = new URLSearchParams(callback_req_params);
 
-        const request_form = new FormData();
         Object.entries(callback_req_params).forEach(([key,values]) => {
-            request_form.set(key,values);
+            url_search_param.set(key,values);
         });
 
         try{
-            const resp = await fetch(`${this.always_get_param_value("token_url")}`,{
+            const resp = await fetch(`${this.always_get_param_value("token_url")}?${url_search_param.toString()}`,{
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
                 },
-                body: request_form,
             });
 
             if(resp.ok){
