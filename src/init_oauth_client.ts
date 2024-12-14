@@ -82,6 +82,9 @@ export class OAuthClient{
 
     public async handle_callback(callback_params:CallbackParams){
 
+        if(this.always_get_param_value("state") !== callback_params.state)
+            throw new Error("State values don't match. Potential CSRF!");
+
         const callback_req_params:CallbackRequestParams = {
             grant_type: "authorization_code" as const,
             client_id: this.always_get_param_value("client_id"),
