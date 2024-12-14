@@ -100,16 +100,18 @@ export class OAuthClient{
         });
 
         try{
-            const resp = await fetch(`${this.always_get_param_value("token_url")}?${url_search_param.toString()}`,{
+            const resp = await fetch(`${this.always_get_param_value("token_url")}}`,{
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
                 },
+                body: url_search_param
             });
 
             if(resp.ok){
-                const body:CallbackResponse = await resp.json();
                 console.log("Access token recieved successfully");
+                const text = await resp.text();
+                const body = Object.fromEntries(new URLSearchParams(text));
                 // initialise TokenManager singleton instance with token params 
                 // returned from auth server.
                 TokenManager.get_instance().set_token_params(body);
@@ -118,6 +120,9 @@ export class OAuthClient{
             }
         }catch(err){
             console.log(err);
+            return {
+                msg: "COULD NOT FETCH ACCESS TOKEN",
+            }
         }
     }
 
