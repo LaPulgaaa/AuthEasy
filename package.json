@@ -1,6 +1,6 @@
 {
   "name": "@lapulga_28/auth_easy",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "description": "A simple JS client library for OAuth2.0",
   "main": "dist/index.js",
   "scripts": {
