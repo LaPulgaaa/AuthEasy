@@ -6,7 +6,7 @@ import {
     url_safe_encode64 
 } from "./util";
 import { TokenManager } from "./token_manager";
-import type { OAuthClientConfigParams,CallbackRequestParams, CallbackResponse, CallbackParams } from "./types";
+import type { OAuthClientConfigParams,CallbackRequestParams, CallbackParams } from "./types";
 
 
 export class OAuthClient{
@@ -83,7 +83,12 @@ export class OAuthClient{
     public async handle_callback(callback_params:CallbackParams){
 
         if(this.always_get_param_value("state") !== callback_params.state)
-            throw new Error("State values don't match. Potential CSRF!");
+        {
+            console.log("State values don't match. Potential CSRF!");
+            console.log(`Recieved from server ${callback_params.state}`);
+            console.log(`Local state value ${this.always_get_param_value("state")}`);
+            return;
+        }
 
         const callback_req_params:CallbackRequestParams = {
             grant_type: "authorization_code" as const,

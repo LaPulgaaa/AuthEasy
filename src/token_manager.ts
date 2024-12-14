@@ -18,10 +18,10 @@ export class TokenManager{
         return TokenManager.instance;
     }
 
-    public set_token_params(token_params: TokenParams){
+    public set_token_params(token_params: Record<string,string>){
         const { expires_in,...data } = token_params;
     
-        const expires_at = Date.now() + expires_in;
+        const expires_at = Date.now() + Number.parseInt(expires_in);
 
         this.store_token_data({
             ...data,
