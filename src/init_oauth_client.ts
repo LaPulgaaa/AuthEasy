@@ -144,10 +144,11 @@ export class OAuthClient{
         // generate a cryptographically secure random string. We can also store specific
         // details in 'state' variable and sign it. For now, we use this only detection 
         // potential CSRF attacks.
-        const random_state = generate_random_str()
-        this.config_store.set("state",random_state);
+        const random_state = generate_random_str();
+        const url_encoded_state = url_safe_encode64(random_state);
+        this.config_store.set("state",url_encoded_state);
         store_data_in_session({
-            state: random_state
+            state: url_encoded_state
         })
     }
 
